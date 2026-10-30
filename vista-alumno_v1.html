@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vista Alumno 360° — FASTA JP II</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.8/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --pri:#4A6572;--pri-dark:#334A54;--accent:#6B9A8A;
+  --bg:#f5f7f9;--card:#ffffff;--text:#2d3e46;--text2:#5a6b74;--text3:#8a9aa3;
+  --border:#dde5e9;--green:#2e7d4a;--blue:#1a6ba3;--orange:#c9850a;
+  --purple:#6a3b8a;--red:#a34434;--yellow:#f0b429;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh}
+.top-nav{background:var(--pri);color:white;padding:12px 20px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);position:sticky;top:0;z-index:50}
+.top-nav h1{font-size:17px;font-weight:700;letter-spacing:-0.3px}
+.top-nav .user{font-size:12px;opacity:0.9;display:flex;align-items:center;gap:10px}
+.top-nav button{background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);
+  padding:4px 12px;border-radius:14px;cursor:pointer;font-size:11px;font-weight:600}
+.top-nav button:hover{background:rgba(255,255,255,0.25)}
+
+.container{max-width:1200px;margin:0 auto;padding:16px}
+
+.selector{background:white;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,0.06);
+  margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.selector label{font-size:12px;font-weight:600;color:var(--text2)}
+.selector input,.selector select{padding:7px 10px;border:1px solid var(--border);border-radius:6px;
+  font-size:13px;font-family:inherit;color:var(--text)}
+.selector input{min-width:260px;flex:1;max-width:400px}
+
+.empty{text-align:center;padding:50px 20px;color:var(--text3)}
+.empty .emoji{font-size:60px;margin-bottom:12px}
+
+/* Header del alumno */
+.alumno-header{background:white;border-radius:10px;padding:18px 20px;margin-bottom:16px;
+  display:flex;align-items:center;gap:16px;box-shadow:0 1px 4px rgba(0,0,0,0.06);flex-wrap:wrap}
+.alumno-header .avatar{width:60px;height:60px;border-radius:50%;background:var(--pri);
+  color:white;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700}
+.alumno-header .nombre{font-size:19px;font-weight:700;color:var(--text)}
+.alumno-header .meta{font-size:12px;color:var(--text2);margin-top:3px}
+.alumno-header .badges-cont{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.badge-incl{font-size:10px;font-weight:700;padding:2px 7px;border-radius:9px;letter-spacing:0.3px}
+.bb-cud{background:#fff3cd;color:#856404}
+.bb-dai{background:#d1ecf1;color:#0c5460}
+.bb-ppi{background:#e2d9f3;color:#432874}
+.bb-baja{background:#f8d7da;color:#721c24}
+.alumno-header .acciones{margin-left:auto;display:flex;gap:6px}
+.alumno-header .acciones button{padding:7px 13px;border:1px solid var(--border);
+  background:white;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2)}
+.alumno-header .acciones button:hover{background:var(--bg);border-color:var(--accent)}
+
+/* Grid de secciones */
+.sections{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.full-row{grid-column:span 2}
+
+.section{background:white;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.06);overflow:hidden}
+.section h3{font-size:14px;font-weight:700;padding:12px 16px;background:#f5f8fa;
+  color:var(--pri);border-bottom:1px solid var(--border)}
+.section .body{padding:14px 16px}
+
+/* Zona resumen rápido */
+.resumen-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat-card{background:#f9fafb;border-radius:8px;padding:12px;text-align:center;border:1px solid var(--border)}
+.stat-card .val{font-size:22px;font-weight:800;line-height:1.1}
+.stat-card .lbl{font-size:10px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:0.4px}
+
+.alerta{background:#fff3cd;color:#856404;padding:8px 12px;border-radius:6px;margin-top:10px;font-size:12px;
+  border-left:3px solid var(--yellow)}
+.alerta.critica{background:#f8d7da;color:#721c24;border-left-color:var(--red)}
+
+/* Tablas */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#eef2f6;padding:6px 8px;text-align:left;font-weight:700;color:var(--text2)}
+td{padding:6px 8px;border-bottom:1px solid #f0f0f0;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafbfc}
+
+.nota-cell{font-weight:700;text-align:center;min-width:38px}
+.n-ok{color:var(--green)} .n-rie{color:var(--orange)} .n-mal{color:var(--red)} .n-sn{color:#ccc}
+
+.chip{display:inline-block;background:#eef2f6;color:var(--text2);
+  font-size:10px;padding:1px 6px;border-radius:10px;margin-right:3px}
+.chip-grav-l{background:#d4edda;color:#155724}
+.chip-grav-m{background:#fff3cd;color:#856404}
+.chip-grav-g{background:#f8d7da;color:#721c24}
+
+details summary{cursor:pointer;font-weight:600;color:var(--pri);font-size:12px;padding:5px 0}
+details summary:hover{color:var(--pri-dark)}
+details[open] summary{margin-bottom:8px}
+
+.incl-row{padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:12px}
+.incl-row:last-child{border-bottom:none}
+.incl-row strong{color:var(--text2);display:inline-block;min-width:140px}
+
+/* Login */
+#loginOverlay{position:fixed;inset:0;background:rgba(74,101,114,0.98);
+  display:flex;align-items:center;justify-content:center;z-index:200}
+.login-box{background:white;border-radius:14px;padding:30px 28px;max-width:360px;width:90%;
+  box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+.login-box h2{color:var(--pri);text-align:center;margin-bottom:4px;font-size:19px}
+.login-box .sub{text-align:center;color:var(--text2);font-size:12px;margin-bottom:20px}
+.login-box label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.login-box input{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:7px;
+  font-size:13px;margin-bottom:12px;font-family:inherit;color:var(--text)}
+.login-box button{width:100%;padding:10px;background:var(--pri);color:white;border:none;
+  border-radius:7px;font-size:13px;font-weight:700;cursor:pointer}
+.login-error{background:#fee;color:var(--red);padding:7px 10px;border-radius:5px;
+  font-size:12px;margin-bottom:10px;display:none}
+
+@media print{
+  .top-nav,.selector,.alumno-header .acciones{display:none !important}
+  body{background:white}
+  .section{box-shadow:none;border:1px solid #ddd;break-inside:avoid}
+  .sections{grid-template-columns:1fr}
+  .full-row{grid-column:span 1}
+}
+
+@media (max-width:768px){
+  .sections{grid-template-columns:1fr}
+  .full-row{grid-column:span 1}
+  .resumen-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- Login overlay -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <h2>🔐 Vista Alumno 360°</h2>
+    <div class="sub">Plataforma FASTA Juan Pablo II</div>
+    <div class="login-error" id="loginError"></div>
+    <label>Email</label>
+    <input type="email" id="loginEmail" placeholder="docente@juanpablo2.redfasta.edu.ar">
+    <label>Contraseña</label>
+    <input type="password" id="loginPass" placeholder="••••••••">
+    <button id="btnLogin" onclick="hacerLogin()">Ingresar</button>
+  </div>
+</div>
+
+<!-- Nav superior -->
+<nav class="top-nav" id="topNav" style="display:none">
+  <h1>👤 Vista Alumno 360°</h1>
+  <div class="user">
+    <span id="userLabel">—</span>
+    <button onclick="cerrarSesion()">Salir</button>
+  </div>
+</nav>
+
+<div class="container" id="main" style="display:none">
+  <!-- Selector de alumno -->
+  <div class="selector">
+    <label>🔍 Buscar:</label>
+    <input type="text" id="busqAlumno" placeholder="Escribí nombre o apellido..." list="listaAlumnos">
+    <datalist id="listaAlumnos"></datalist>
+    <label style="margin-left:10px">📚 Grado:</label>
+    <select id="selGrado"><option value="">— Todos —</option></select>
+    <select id="selAlumno" style="min-width:220px"><option value="">— Elegir alumno —</option></select>
+    <button onclick="cargarAlumnoSeleccionado()" style="padding:7px 14px;background:var(--pri);color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">Ver</button>
+  </div>
+
+  <!-- Contenedor dinámico -->
+  <div id="contenidoAlumno">
+    <div class="empty">
+      <div class="emoji">👤</div>
+      <p>Elegí un alumno para ver su vista completa.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// VISTA ALUMNO 360° — FASTA Juan Pablo II
+// =====================================================================
+const SB_URL = "https://navsfrfgyyjxckmincmb.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5hdnNmcmZneXlqeGNrbWluY21iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MDg0ODAsImV4cCI6MjEwNDI4NDQ4MH0.IWCyH9HvskRRU6pG4e2_1BvQI84qPnSnBmiQBa_q45o";
+
+let sb = null;
+let usuarioActual = null;
+let misAsignaciones = [];
+let todasAsignaciones = [];
+let alumnos = [];
+let materiasPorGrado = {};
+let materiasPorId = {};
+let aprendizajesPorId = {};
+let alumnoActual = null;
+const PERIODOS = ["Primer Período","Segundo Período","Calificación Final"];
+
+if(window.supabase && window.supabase.createClient){
+  sb = window.supabase.createClient(SB_URL, SB_KEY);
+}
+
+// === Util ===
+function escH(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+function round2(n){return Math.round(n*100)/100;}
+function fmtN(n){return n===null||n===undefined||isNaN(n)?'—':round2(n).toFixed(2);}
+function notaCls(n){if(n===null||n===undefined||isNaN(n))return 'n-sn';if(n>=7)return 'n-ok';if(n>=6)return 'n-rie';return 'n-mal';}
+function gradoAUI(g){ if(!g) return ''; return g.replace(' grado','').replace('º','°'); }
+function gradoADB(g){ if(!g) return ''; return g.replace('°','º') + (g.includes('grado')?'':' grado'); }
+
+function esAdminDirCoord(){ return usuarioActual && ['admin','direccion','coordinador','desarrollador'].includes(usuarioActual.rol); }
+function soyPsicopedagoga(){
+  if(!usuarioActual) return false;
+  return misAsignaciones.some(a => a.tipo_asignacion === 'psicopedagoga');
+}
+function soyTitularDe(grado){ return misAsignaciones.some(a => a.tipo_asignacion === 'titular' && a.grado === grado); }
+function doyMateriaEn(grado){ return misAsignaciones.some(a => a.tipo_asignacion === 'materia' && a.grado === grado); }
+function puedoVerAlumno(al){
+  if(esAdminDirCoord()) return true;
+  if(soyPsicopedagoga()) return misAsignaciones.some(a => a.tipo_asignacion === 'psicopedagoga' && a.grado === al.grado);
+  if(soyTitularDe(al.grado)) return true;
+  if(doyMateriaEn(al.grado)) return true;
+  return false;
+}
+// Nivel de acceso a inclusión según rol
+function nivelInclusion(al){
+  if(esAdminDirCoord()) return 'completo';
+  if(soyPsicopedagoga()) return 'completo';
+  if(soyTitularDe(al.grado)) return 'intermedio';  // badges + adaptaciones + contacto DAI, SIN diagnóstico/CUD
+  if(doyMateriaEn(al.grado)) return 'basico';      // solo badges + adaptaciones
+  return 'ninguno';
+}
+
+// === Login ===
+window.addEventListener('DOMContentLoaded', async () => {
+  if(!sb){ mostrarError('Error cargando Supabase'); return; }
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if(session && session.user) await cargarUsuario(session.user);
+  } catch(e){ console.warn('Sin sesión'); }
+  document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') hacerLogin(); });
+});
+
+async function hacerLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const btn = document.getElementById('btnLogin');
+  if(!email || !pass){ mostrarError('Completá email y contraseña'); return; }
+  btn.disabled = true; btn.textContent = 'Verificando...';
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if(error){ mostrarError('Credenciales incorrectas'); btn.disabled=false; btn.textContent='Ingresar'; return; }
+    await cargarUsuario(data.user);
+  } catch(e){ mostrarError(e.message); btn.disabled=false; btn.textContent='Ingresar'; }
+}
+
+async function cargarUsuario(authUser){
+  try {
+    const { data } = await sb.from('usuarios').select('id, email, nombre, rol').eq('id', authUser.id).single();
+    usuarioActual = data || { id: authUser.id, email: authUser.email, nombre: authUser.email, rol: 'sin_rol' };
+    await cargarDatosIniciales();
+    mostrarApp();
+  } catch(e){ mostrarError('Error cargando perfil: ' + e.message); }
+}
+
+async function cargarDatosIniciales(){
+  // Asignaciones (todas y las mías)
+  const { data: asigs } = await sb.from('docente_asignaciones').select('id, email, nombre_completo, rol, tipo_asignacion, grado, materia');
+  todasAsignaciones = asigs || [];
+  misAsignaciones = todasAsignaciones.filter(a => a.email === usuarioActual.email);
+  // Alumnos
+  const { data: als } = await sb.from('alumnos').select('*').order('nombre');
+  alumnos = (als||[]).map(a => ({...a, grado: gradoAUI(a.grado)}));
+  // Materias
+  const { data: mats } = await sb.from('materias').select('id, nombre, grado, area_pedagogica').eq('activa', true).order('orden');
+  (mats||[]).forEach(m => {
+    const g = gradoAUI(m.grado);
+    if(!materiasPorGrado[g]) materiasPorGrado[g] = [];
+    materiasPorGrado[g].push(m);
+    materiasPorId[m.id] = {...m, grado: g};
+  });
+  // Aprendizajes
+  const { data: abs } = await sb.from('aprendizajes').select('id, codigo, eje, sub_eje, nombre, origen, materia_id').eq('activo', true);
+  (abs||[]).forEach(a => aprendizajesPorId[a.id] = a);
+}
+
+function mostrarApp(){
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('topNav').style.display = 'flex';
+  document.getElementById('main').style.display = 'block';
+  document.getElementById('userLabel').textContent = `${usuarioActual.nombre || usuarioActual.email} · ${(usuarioActual.rol||'').toUpperCase()}`;
+  llenarSelectores();
+}
+
+function llenarSelectores(){
+  // Grados según permisos
+  const grados = ['1°','2°','3°','4°','5°','6°','7°'].filter(g => alumnos.some(a => a.grado === g && puedoVerAlumno(a)));
+  const selG = document.getElementById('selGrado');
+  selG.innerHTML = '<option value="">— Todos —</option>' + grados.map(g => `<option>${g}</option>`).join('');
+  selG.onchange = refrescarListaAlumnos;
+  refrescarListaAlumnos();
+  // Buscador (datalist)
+  const datalist = document.getElementById('listaAlumnos');
+  const alsVisibles = alumnos.filter(a => puedoVerAlumno(a) && a.activo !== false);
+  datalist.innerHTML = alsVisibles.map(a => `<option value="${escH(a.nombre)} · ${escH(a.grado)}">`).join('');
+  document.getElementById('busqAlumno').onchange = function(){
+    const val = this.value;
+    const m = val.match(/^(.*?) · (.+)$/);
+    if(m){
+      const nombre = m[1], grado = m[2];
+      const al = alumnos.find(a => a.nombre === nombre && a.grado === grado);
+      if(al){ seleccionarAlumno(al.id); }
+    }
+  };
+}
+
+function refrescarListaAlumnos(){
+  const g = document.getElementById('selGrado').value;
+  const sel = document.getElementById('selAlumno');
+  const alsG = alumnos.filter(a => puedoVerAlumno(a) && a.activo !== false && (!g || a.grado === g)).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  sel.innerHTML = '<option value="">— Elegir alumno —</option>' + alsG.map(a => `<option value="${a.id}">${escH(a.nombre)} · ${escH(a.grado)}</option>`).join('');
+  sel.onchange = () => { if(sel.value) seleccionarAlumno(sel.value); };
+}
+
+function cargarAlumnoSeleccionado(){
+  const id = document.getElementById('selAlumno').value;
+  if(id) seleccionarAlumno(id);
+}
+
+function seleccionarAlumno(id){
+  const al = alumnos.find(a => a.id === id);
+  if(!al) return;
+  if(!puedoVerAlumno(al)){
+    alert('No tenés permiso para ver este alumno.'); return;
+  }
+  alumnoActual = al;
+  renderizarVista360();
+}
+
+// === RENDERIZADO DE LA VISTA 360° ===
+async function renderizarVista360(){
+  const cont = document.getElementById('contenidoAlumno');
+  cont.innerHTML = `<div class="empty"><div class="emoji">⏳</div><p>Cargando datos del alumno...</p></div>`;
+  const al = alumnoActual;
+
+  // Cargar datos del alumno en paralelo
+  const [evalsRes, notasRes, evalABRes, llamRes, recoRes, inclRes] = await Promise.all([
+    sb.from('evaluaciones').select('id, materia, grado, periodo, tipo, subtipo, descripcion, fecha, ano_escolar'),
+    sb.from('notas').select('id, evaluacion_id, alumno_id, nota, ausente').eq('alumno_id', al.id),
+    sb.from('evaluaciones_aprendizajes').select('evaluacion_id, aprendizaje_id'),
+    sb.from('registros').select('*').eq('alumno_id', al.id).order('fecha', { ascending: false }),
+    sb.from('reconocimientos').select('*').eq('alumno_id', al.id).order('fecha', { ascending: false }),
+    sb.from('seguimiento_inclusion').select('*').eq('alumno_id', al.id).order('fecha', { ascending: false })
+  ]);
+
+  const evaluaciones = (evalsRes.data||[]).map(e => ({...e, aprendizaje_ids: []}));
+  const evMap = {};
+  evaluaciones.forEach(e => evMap[e.id] = e);
+  (evalABRes.data||[]).forEach(r => { if(evMap[r.evaluacion_id]) evMap[r.evaluacion_id].aprendizaje_ids.push(r.aprendizaje_id); });
+  // Armar notas por evaluación → ev.notas[alId]
+  evaluaciones.forEach(e => { e.notas = {}; e.ausentes = []; });
+  (notasRes.data||[]).forEach(n => {
+    const ev = evMap[n.evaluacion_id];
+    if(!ev) return;
+    if(n.ausente) ev.ausentes.push(n.alumno_id);
+    else if(n.nota !== null) ev.notas[n.alumno_id] = Number(n.nota);
+  });
+
+  const llamados = llamRes.data || [];
+  const reconocimientos = recoRes.data || [];
+  const seguimientosInclusion = inclRes.data || [];
+
+  // === Zona 0: Header ===
+  const nivel = nivelInclusion(al);
+  const esBajaFecha = al.baja_fecha ? new Date(al.baja_fecha).toLocaleDateString('es-AR') : null;
+  let badges = '';
+  if(nivel !== 'ninguno'){
+    if(al.tiene_cud) badges += `<span class="badge-incl bb-cud">CUD</span>`;
+    if(al.tiene_dai) badges += `<span class="badge-incl bb-dai">DAI</span>`;
+    if(al.tiene_ppi) badges += `<span class="badge-incl bb-ppi">PPI</span>`;
+  }
+  if(al.activo === false) badges += `<span class="badge-incl bb-baja">📤 BAJA ${esBajaFecha?esBajaFecha:''}</span>`;
+
+  // Titular del grado
+  const titular = todasAsignaciones.find(a => a.tipo_asignacion === 'titular' && a.grado === al.grado);
+  const titularNombre = titular ? (titular.nombre_completo || titular.email) : '—';
+
+  let html = `<div class="alumno-header">
+    <div class="avatar">${escH((al.nombre||'?').charAt(0))}</div>
+    <div style="flex:1;min-width:200px">
+      <div class="nombre">${escH(al.nombre)}</div>
+      <div class="meta">${escH(al.grado)} grado · ${escH(al.nivel||'Primario')} · Titular: ${escH(titularNombre)}${al.ano_escolar_actual?` · Ciclo ${escH(al.ano_escolar_actual)}`:''}</div>
+      <div class="badges-cont">${badges || '<span style="color:var(--text3);font-size:11px">Sin observaciones de inclusión</span>'}</div>
+    </div>
+    <div class="acciones">
+      <button onclick="window.print()">🖨️ Imprimir</button>
+      <button onclick="exportarPDF()">📄 PDF</button>
+      <button onclick="volverLista()">↩ Volver</button>
+    </div>
+  </div>`;
+
+  // === Calcular promedios ===
+  const matsG = materiasPorGrado[al.grado] || [];
+  const matNombres = [...new Set(matsG.map(m => m.nombre))];
+  const promsMat = {};  // materia → {per: [p1,p2,p3], anual, enRiesgo}
+  matNombres.forEach(mat => {
+    const perArr = PERIODOS.map(per => promedioAlumnoMatPer(al.id, mat, al.grado, per, evaluaciones));
+    const anual = (() => {
+      const vs = perArr.filter(v => v !== null);
+      return vs.length ? round2(vs.reduce((a,b)=>a+b,0)/vs.length) : null;
+    })();
+    promsMat[mat] = { per: perArr, anual };
+  });
+  const promedioGenPer = PERIODOS.map(per => {
+    const vs = matNombres.map(m => promedioAlumnoMatPer(al.id, m, al.grado, per, evaluaciones)).filter(v=>v!==null);
+    return vs.length ? round2(vs.reduce((a,b)=>a+b,0)/vs.length) : null;
+  });
+  const promedioAnual = (()=>{ const vs=promedioGenPer.filter(v=>v!==null); return vs.length ? round2(vs.reduce((a,b)=>a+b,0)/vs.length) : null; })();
+  const materiasEnRiesgo = matNombres.filter(m => promsMat[m].anual !== null && promsMat[m].anual < 7).length;
+  const materiasAprob = matNombres.filter(m => promsMat[m].anual !== null && promsMat[m].anual >= 7).length;
+
+  const periodoActual = PERIODOS[0];  // por default primer período para contar llamados
+  const llamadosPer = llamados.filter(l => l.periodo === periodoActual).length;
+  const reconocimientosPer = reconocimientos.filter(r => r.periodo === periodoActual).length;
+  const totalLlamados = llamados.length;
+  const totalRecon = reconocimientos.length;
+
+  // === Zona 1: Resumen ===
+  html += `<div class="sections">
+    <div class="section full-row">
+      <h3>📊 Resumen rápido</h3>
+      <div class="body">
+        <div class="resumen-grid">
+          <div class="stat-card">
+            <div class="val ${notaCls(promedioAnual)}">${fmtN(promedioAnual)}</div>
+            <div class="lbl">Promedio general</div>
+          </div>
+          <div class="stat-card">
+            <div class="val" style="color:${materiasEnRiesgo>0?'var(--red)':'var(--green)'}">${materiasAprob}/${matNombres.length}</div>
+            <div class="lbl">Materias aprobadas</div>
+          </div>
+          <div class="stat-card">
+            <div class="val" style="color:${totalLlamados>0?'var(--red)':'var(--text3)'}">${totalLlamados}</div>
+            <div class="lbl">Llamados totales</div>
+          </div>
+          <div class="stat-card">
+            <div class="val" style="color:${totalRecon>0?'var(--green)':'var(--text3)'}">${totalRecon}</div>
+            <div class="lbl">Reconocimientos</div>
+          </div>
+        </div>`;
+  // Alertas
+  if(materiasEnRiesgo >= 3) html += `<div class="alerta critica">🚨 ${materiasEnRiesgo} materias desaprobadas — alumno en riesgo de repitencia.</div>`;
+  else if(materiasEnRiesgo > 0) html += `<div class="alerta">⚠️ ${materiasEnRiesgo} materia${materiasEnRiesgo!==1?'s':''} con promedio menor a 7.</div>`;
+  if(totalLlamados >= 10) html += `<div class="alerta critica">🚨 ${totalLlamados} llamados de atención acumulados — revisar seguimiento.</div>`;
+  html += `</div></div>`;
+
+  // === Zona 2: Académico ===
+  html += `<div class="section full-row">
+    <h3>📚 Rendimiento académico por materia</h3>
+    <div class="body">
+      <table>
+        <thead><tr><th>Materia</th>${PERIODOS.map(p=>`<th class="nota-cell">${escH(p.replace('Período','P').replace('Primer','1°').replace('Segundo','2°').replace('Calificación Final','Final'))}</th>`).join('')}<th class="nota-cell">Anual</th><th>Desglose AB</th></tr></thead>
+        <tbody>`;
+  matNombres.forEach(mat => {
+    const pm = promsMat[mat];
+    // Desglose por AB
+    const desglose = calcularDesgloseAB(al.id, mat, al.grado, periodoActual, evaluaciones);
+    const abList = Object.values(desglose);
+    let desgloseHtml = '';
+    if(abList.length){
+      // Ordenar por promedio ascendente para mostrar los más flojos primero
+      abList.sort((a,b)=>(a.promedio??99)-(b.promedio??99));
+      desgloseHtml = abList.map(ab => {
+        const n = ab.promedio;
+        const c = notaCls(n);
+        return `<span class="chip" title="${escH(ab.nombre)}: ${ab.notas.join(', ')}" style="background:${n>=7?'#d4edda':n>=6?'#fff3cd':'#f8d7da'};color:${n>=7?'#155724':n>=6?'#856404':'#721c24'}">${escH(ab.nombre.substring(0,20))}${ab.nombre.length>20?'…':''}: ${fmtN(n)}</span>`;
+      }).join(' ');
+    } else {
+      desgloseHtml = '<span style="color:var(--text3);font-style:italic;font-size:11px">Sin notas cargadas</span>';
+    }
+    html += `<tr>
+      <td><strong>${escH(mat)}</strong></td>
+      ${pm.per.map(n=>`<td class="nota-cell ${notaCls(n)}">${fmtN(n)}</td>`).join('')}
+      <td class="nota-cell ${notaCls(pm.anual)}" style="background:#f5f8fa">${fmtN(pm.anual)}</td>
+      <td style="font-size:11px">${desgloseHtml}</td>
+    </tr>`;
+  });
+  html += `<tr style="background:#eef2f6;font-weight:700">
+    <td>PROMEDIO GENERAL</td>
+    ${promedioGenPer.map(n=>`<td class="nota-cell ${notaCls(n)}">${fmtN(n)}</td>`).join('')}
+    <td class="nota-cell ${notaCls(promedioAnual)}" style="background:#dde6ee">${fmtN(promedioAnual)}</td>
+    <td></td>
+  </tr></tbody></table>
+      <p style="font-size:11px;color:var(--text3);margin-top:10px">💡 Pasá el mouse sobre un AB para ver sus notas. Chips rojos = AB que le cuesta al alumno.</p>
+    </div>
+  </div>`;
+
+  // === Zona 3: Convivencia (llamados + reconocimientos) ===
+  html += `<div class="section">
+    <h3>⚠️ Llamados de atención (${llamados.length})</h3>
+    <div class="body">`;
+  if(!llamados.length){
+    html += `<p style="color:var(--text3);font-style:italic;font-size:12px">Sin llamados de atención registrados.</p>`;
+  } else {
+    html += `<table><thead><tr><th>Fecha</th><th>Falta</th><th>Grav.</th><th>Docente</th></tr></thead><tbody>`;
+    llamados.slice(0, 20).forEach(l => {
+      const grav = l.gravedad === 'leve' ? 'chip-grav-l' : l.gravedad === 'moderada' ? 'chip-grav-m' : 'chip-grav-g';
+      html += `<tr>
+        <td style="font-size:11px">${l.fecha||'—'}</td>
+        <td title="${escH(l.obs||'')}">${escH(l.texto||l.cat||'—')}</td>
+        <td><span class="chip ${grav}">${escH(l.gravedad||'—')}</span></td>
+        <td style="font-size:11px;color:var(--text2)">${escH(l.docente_nombre||'—')}</td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+    if(llamados.length > 20) html += `<p style="font-size:11px;color:var(--text3);margin-top:8px">Mostrando los 20 más recientes de ${llamados.length} totales.</p>`;
+  }
+  html += `</div></div>`;
+
+  html += `<div class="section">
+    <h3>🌟 Reconocimientos de virtudes (${reconocimientos.length})</h3>
+    <div class="body">`;
+  if(!reconocimientos.length){
+    html += `<p style="color:var(--text3);font-style:italic;font-size:12px">Sin reconocimientos registrados.</p>`;
+  } else {
+    html += `<table><thead><tr><th>Fecha</th><th>Virtud</th><th>Ejemplo</th><th>Docente</th></tr></thead><tbody>`;
+    reconocimientos.slice(0, 20).forEach(r => {
+      html += `<tr>
+        <td style="font-size:11px">${r.fecha||'—'}</td>
+        <td><strong style="color:var(--green)">${escH(r.virtud_nombre||'—')}</strong></td>
+        <td style="font-size:11px" title="${escH(r.detalle||'')}">${escH((r.ejemplo||'').substring(0,60))}${(r.ejemplo||'').length>60?'…':''}</td>
+        <td style="font-size:11px;color:var(--text2)">${escH(r.docente_nombre||'—')}</td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+    if(reconocimientos.length > 20) html += `<p style="font-size:11px;color:var(--text3);margin-top:8px">Mostrando los 20 más recientes de ${reconocimientos.length} totales.</p>`;
+  }
+  html += `</div></div>`;
+
+  // === Zona 4: Inclusión (según permisos) ===
+  if(nivel !== 'ninguno' && (al.tiene_cud || al.tiene_dai || al.tiene_ppi || al.adaptaciones_curriculares || al.observaciones_inclusion || seguimientosInclusion.length)){
+    html += `<div class="section full-row">
+      <h3>♿ Inclusión educativa <span style="font-size:10px;font-weight:400;color:var(--text3);margin-left:8px">Ley 25.326 — Datos sensibles</span></h3>
+      <div class="body">`;
+    if(nivel === 'basico'){
+      // Docente de materia: solo badges + adaptaciones
+      if(al.adaptaciones_curriculares){
+        html += `<div class="incl-row"><strong>Adaptaciones curriculares:</strong><div style="margin-top:4px;font-size:12px">${escH(al.adaptaciones_curriculares)}</div></div>`;
+      }
+      html += `<p style="color:var(--text3);font-size:11px;margin-top:10px;font-style:italic">Como docente de materia, solo ves las adaptaciones curriculares. El resto de la información está disponible para el equipo de inclusión, titular y dirección.</p>`;
+    } else if(nivel === 'intermedio'){
+      // Titular: badges + adaptaciones + contacto DAI (SIN diagnóstico ni número CUD)
+      if(al.tiene_cud){
+        html += `<div class="incl-row"><strong>CUD:</strong> Vigente${al.cud_vencimiento?` · Vence: ${al.cud_vencimiento}`:''}</div>`;
+      }
+      if(al.tiene_dai){
+        html += `<div class="incl-row"><strong>DAI:</strong> ${escH(al.dai_nombre||'—')}${al.dai_institucion?` (${escH(al.dai_institucion)})`:''}${al.dai_contacto?` · ${escH(al.dai_contacto)}`:''}</div>`;
+      }
+      if(al.tiene_ppi){
+        html += `<div class="incl-row"><strong>PPI:</strong> Aprobado${al.ppi_fecha?` el ${al.ppi_fecha}`:''}</div>`;
+      }
+      if(al.adaptaciones_curriculares){
+        html += `<div class="incl-row"><strong>Adaptaciones:</strong><div style="margin-top:4px;font-size:12px">${escH(al.adaptaciones_curriculares)}</div></div>`;
+      }
+      html += `<p style="color:var(--text3);font-size:11px;margin-top:10px;font-style:italic">💡 Como titular ves la información necesaria para la práctica diaria. Diagnóstico médico y número de CUD están reservados al equipo de inclusión y dirección (Ley 25.326).</p>`;
+    } else {
+      // Completo (admin/dir/coord/psicopedagoga)
+      if(al.tiene_cud){
+        html += `<div class="incl-row"><strong>CUD número:</strong> ${escH(al.cud_numero||'—')}</div>`;
+        html += `<div class="incl-row"><strong>Diagnóstico:</strong> ${escH(al.cud_diagnostico||'—')}</div>`;
+        html += `<div class="incl-row"><strong>Vencimiento CUD:</strong> ${al.cud_vencimiento||'—'}</div>`;
+      }
+      if(al.tiene_dai){
+        html += `<div class="incl-row"><strong>DAI (acompañante):</strong> ${escH(al.dai_nombre||'—')}</div>`;
+        html += `<div class="incl-row"><strong>Institución DAI:</strong> ${escH(al.dai_institucion||'—')}</div>`;
+        html += `<div class="incl-row"><strong>Contacto DAI:</strong> ${escH(al.dai_contacto||'—')}</div>`;
+      }
+      if(al.tiene_ppi){
+        html += `<div class="incl-row"><strong>PPI aprobado:</strong> ${al.ppi_fecha||'—'}</div>`;
+      }
+      if(al.adaptaciones_curriculares){
+        html += `<div class="incl-row"><strong>Adaptaciones curriculares:</strong><div style="margin-top:4px;font-size:12px">${escH(al.adaptaciones_curriculares)}</div></div>`;
+      }
+      if(al.observaciones_inclusion){
+        html += `<div class="incl-row"><strong>Observaciones:</strong><div style="margin-top:4px;font-size:12px">${escH(al.observaciones_inclusion)}</div></div>`;
+      }
+      // Historial de seguimientos
+      if(seguimientosInclusion.length){
+        html += `<details style="margin-top:14px"><summary>📋 Historial de seguimientos (${seguimientosInclusion.length})</summary>`;
+        html += `<table style="margin-top:8px"><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Acuerdos</th><th>Próxima acción</th></tr></thead><tbody>`;
+        seguimientosInclusion.forEach(s => {
+          html += `<tr>
+            <td style="font-size:11px">${s.fecha||'—'}</td>
+            <td style="font-size:11px"><strong>${escH(s.tipo||'—')}</strong></td>
+            <td style="font-size:11px">${escH((s.descripcion||'').substring(0,80))}${(s.descripcion||'').length>80?'…':''}</td>
+            <td style="font-size:11px">${escH((s.acuerdos||'').substring(0,60))}${(s.acuerdos||'').length>60?'…':''}</td>
+            <td style="font-size:11px;color:var(--text2)">${escH(s.proxima_accion||'')}${s.proxima_fecha?` · ${s.proxima_fecha}`:''}</td>
+          </tr>`;
+        });
+        html += `</tbody></table></details>`;
+      }
+    }
+    html += `</div></div>`;
+  }
+
+  // === Zona 5: Historial multi-año ===
+  const aniosEnEvs = [...new Set(evaluaciones.filter(e => e.notas[al.id] !== undefined).map(e => e.ano_escolar).filter(Boolean))].sort();
+  if(aniosEnEvs.length > 1){
+    html += `<div class="section full-row">
+      <h3>📜 Historial multi-año</h3>
+      <div class="body">
+        <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Años con notas registradas: ${aniosEnEvs.map(a=>`<strong>${a}</strong>`).join(', ')}</p>
+        <p style="font-size:11px;color:var(--text3);font-style:italic">El historial multi-año completo se mostrará con el próximo módulo de promoción (PASO 8).</p>
+      </div>
+    </div>`;
+  }
+
+  // === Cierre ===
+  html += `</div>`;
+  cont.innerHTML = html;
+  window.scrollTo({top: 0, behavior:'smooth'});
+}
+
+// === Cálculos ===
+function evalsDeMateria(materia, grado, periodo, evaluaciones){
+  return evaluaciones.filter(e => e.materia === materia && e.grado === grado && e.periodo === periodo);
+}
+
+function calcularDesgloseAB(alId, materia, grado, periodo, evaluaciones){
+  const evs = evalsDeMateria(materia, grado, periodo, evaluaciones);
+  const porAB = {};
+  evs.forEach(e => {
+    const v = e.notas[alId];
+    if(v === undefined || v === "" || v === null) return;
+    const n = Number(v); if(isNaN(n)) return;
+    const abIds = (e.aprendizaje_ids && e.aprendizaje_ids.length) ? e.aprendizaje_ids : ['__sin_ab__'];
+    abIds.forEach(abId => {
+      if(!porAB[abId]){
+        let nombre = '(Sin AB)';
+        if(abId !== '__sin_ab__'){
+          const found = aprendizajesPorId[abId];
+          if(found) nombre = found.nombre;
+        }
+        porAB[abId] = { nombre, notas: [], promedio: null };
+      }
+      porAB[abId].notas.push(n);
+    });
+  });
+  Object.values(porAB).forEach(ab => {
+    ab.promedio = round2(ab.notas.reduce((a,b)=>a+b,0) / ab.notas.length);
+  });
+  return porAB;
+}
+
+function promedioAlumnoMatPer(alId, materia, grado, periodo, evaluaciones){
+  const desg = calcularDesgloseAB(alId, materia, grado, periodo, evaluaciones);
+  const proms = Object.values(desg).map(ab => ab.promedio);
+  if(!proms.length) return null;
+  return round2(proms.reduce((a,b)=>a+b,0) / proms.length);
+}
+
+// === Acciones ===
+function volverLista(){
+  alumnoActual = null;
+  document.getElementById('selAlumno').value = '';
+  document.getElementById('busqAlumno').value = '';
+  document.getElementById('contenidoAlumno').innerHTML = `<div class="empty"><div class="emoji">👤</div><p>Elegí un alumno para ver su vista completa.</p></div>`;
+}
+
+function exportarPDF(){
+  // Alias de imprimir — el navegador ofrece "Guardar como PDF"
+  window.print();
+}
+
+function mostrarError(msg){
+  const el = document.getElementById('loginError');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+async function cerrarSesion(){
+  if(!confirm('¿Cerrar sesión?')) return;
+  await sb.auth.signOut();
+  location.reload();
+}
+</script>
+</body>
+</html>
