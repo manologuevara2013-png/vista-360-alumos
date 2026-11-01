@@ -148,6 +148,7 @@ details[open] summary{margin-bottom:8px}
   <h1>👤 Vista Alumno 360°</h1>
   <div class="user">
     <span id="userLabel">—</span>
+    <button onclick="volverPlataforma()" title="Volver al launcher" style="background:rgba(255,255,255,0.25)">🏠 Plataforma</button>
     <button onclick="cerrarSesion()">Salir</button>
   </div>
 </nav>
@@ -676,6 +677,10 @@ async function cerrarSesion(){
   if(!confirm('¿Cerrar sesión?')) return;
   await sb.auth.signOut();
   location.reload();
+}
+
+function volverPlataforma(){
+  window.location.href = 'https://manologuevara2013-png.github.io/plataforma-fasta/';
 }
 </script>
 </body>
